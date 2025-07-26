@@ -4,6 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import plotly.graph_objects as go
+from data import *
 sns.set(style='dark')
 
 st.set_page_config(page_title="Dashboard", layout="wide")
@@ -13,10 +14,39 @@ st.sidebar.title("Options")
 ticker = st.sidebar.text_input("Enter Ticker Symbol", value="MSFT")
 view_mode = st.sidebar.radio("Select Your View Mode", ["Latest", "Quarterly", 'Yearly'])
 dummy_mode = st.sidebar.checkbox("Enable Dummy Mode")
+plot_f = st.sidebar.checkbox("Plot Financial's Graphs")
+plot_r = st.sidebar.checkbox("Plot Ratios' Graphs")
 
+def scale_df(df):
+        columns = [x for x in df.columns if x not in ['Year', 'Quarter']]
+        new_df = df[['Year', 'Quarter']]
+        for column in columns:
+            max_val = df[column].abs().max()
+            if pd.isna(max_val):
+                scale = 1
+                suffix = ''
+            elif max_val >= 1e12:
+                scale = 1e12
+                suffix = "(Trillions)"
+            elif max_val >= 1e9:
+                scale = 1e9
+                suffix = "(Billions)"
+            elif max_val >= 1e6:
+                scale = 1e6
+                suffix = "(Millions)"
+            else:
+                scale = 1
+                suffix = ''
+            
+            if suffix != '':
+                new_col_name = f"{column} {suffix}"
+                new_df[new_col_name] = (df[column] / scale)
+            else:
+                new_df[column] = df[column]
+            new_df.dropna(inplace = True)
+        return new_df
 
-
-def display_company_header(stock_obj):
+def display_company_header():
     info = stock_obj.info
 
     # Helper Functions (do not edit these as per instruction)
@@ -95,334 +125,217 @@ def display_company_header(stock_obj):
     col2.metric("Sector", sector)
     col3.metric("Industry", industry)
 
-    col4, col5, col6 = st.columns(3)
-    col4.metric("Exchange", exchange)
-    col5.metric("Country", country)
-    col6.metric("Ticker", ticker)
+    col1.metric("Exchange", exchange)
+    col2.metric("Country", country)
+    col3.metric("Ticker", ticker)
 
     st.markdown("---")
 
     # Financial Metrics Section
     st.subheader("📈 Valuation and Price Metrics")
 
-    col7, col8, col9 = st.columns(3)
+    col4, col5, col6 = st.columns(3)
+
     render_metric(
-        col7, "Current Price", f"${scale_number(current_price)}",
-        "**Current Price** is the latest trading price of the stock on the exchange.",
-        "It's the price someone's willing to pay for the stock right now.",
-        interpretation_note="This value is not that useful by itself — compare it with EPS, Book Value, or peers to judge whether it's high or low."
-    )
-    render_metric(
-        col8, "Book Value", f"${scale_number(book_value)}",
-        "**Book Value** is the total value of the company's assets minus liabilities, per share.",
-        "Think of it as what's left if the company sold everything and paid off all the bills.",
-        latex_formula=r"\text{Book Value} = \frac{\text{Assets} - \text{Liabilities}}{\text{Outstanding Shares}}",
-        interpretation_note="If the stock price is below the book value, it could be undervalued — or in trouble. Use with caution and comparison."
-    )
-    render_metric(
-        col9, "Market Cap", scale_number(market_cap),
-        "**Market Capitalization** is the total market value of a company's outstanding shares.",
-        "It's how much the market thinks the company is worth — or how expensive it is to buy the whole thing.",
-        latex_formula=r"\text{Market Cap} = \text{Share Price} \times \text{Total Shares}",
-        interpretation_note="- Less than $2B → Small-cap (riskier, high growth potential)\n - Between $2B-$10B → Mid-cap (balanced)\n - Greater than $10B → Large-cap (stable, less risky)\n\n **May be different in you country or exchange so verify**"
+        col4, "Current Price", f"${scale_number(current_price)}",
+        HEADER_METRIC.get("Current Price")['formal'],
+        HEADER_METRIC.get("Current Price")['casual'],
+        latex_formula=HEADER_METRIC.get("Current Price")['latex'],
+        interpretation_note=HEADER_METRIC.get("Current Price")['guide']
     )
 
-    col10, col11, col12 = st.columns(3)
     render_metric(
-        col10, "52-Week Low", f"${scale_number(fifty_two_week_low)}",
-        "**52-Week Low** is the lowest price the stock traded at in the past year.",
-        "The stock was this sad at some point last year — drama!",
-        interpretation_note="If current price is near this, the stock might be undervalued (or struggling). Good for bargain hunters — Proceed with caution."
+        col5, "Book Value", f"${scale_number(book_value)}",
+        HEADER_METRIC.get("Book Value")['formal'],
+        HEADER_METRIC.get("Book Value")['casual'],
+        latex_formula=HEADER_METRIC.get("Book Value")['latex'],
+        interpretation_note=HEADER_METRIC.get("Book Value")['guide']
     )
+
     render_metric(
-        col11, "52-Week High", f"${scale_number(fifty_two_week_high)}",
-        "**52-Week High** is the highest price the stock traded at in the past year.",
-        "This is the stock’s bragging moment — peak flex mode.",
-        interpretation_note="If the current price is near this, the stock might be overbought — or performing exceptionally well."
+        col6, "Market Cap", scale_number(market_cap),
+        HEADER_METRIC.get("Market Cap")['formal'],
+        HEADER_METRIC.get("Market Cap")['casual'],
+        latex_formula=HEADER_METRIC.get("Market Cap")['latex'],
+        interpretation_note=HEADER_METRIC.get("Market Cap")['guide']
     )
+
     render_metric(
-        col12, "Avg Volume (10D)", scale_number(avg_volume_10d),
-        "**Average Volume (10D)** is the average number of shares traded daily over the last 10 days.",
-        "Basically, how much people have been buying/selling it lately.",
-        interpretation_note="Higher volume = more liquidity and interest.\nSudden volume spikes often signal big news or sentiment changes."
+        col4, "52-Week Low", f"${scale_number(fifty_two_week_low)}",
+        HEADER_METRIC.get("52-Week Low")['formal'],
+        HEADER_METRIC.get("52-Week Low")['casual'],
+        latex_formula=HEADER_METRIC.get("52-Week Low").get('latex', None),
+        interpretation_note=HEADER_METRIC.get("52-Week Low")['guide']
+    )
+
+    render_metric(
+        col5, "52-Week High", f"${scale_number(fifty_two_week_high)}",
+        HEADER_METRIC.get("52-Week High")['formal'],
+        HEADER_METRIC.get("52-Week High")['casual'],
+        latex_formula=HEADER_METRIC.get("52-Week High").get('latex', None),
+        interpretation_note=HEADER_METRIC.get("52-Week High")['guide']
+    )
+
+    render_metric(
+        col6, "Avg Volume (10D)", scale_number(avg_volume_10d),
+        HEADER_METRIC.get("Avg Volume (10D)")['formal'],
+        HEADER_METRIC.get("Avg Volume (10D)")['casual'],
+        latex_formula=HEADER_METRIC.get("Avg Volume (10D)").get('latex', None),
+        interpretation_note=HEADER_METRIC.get("Avg Volume (10D)")['guide']
     )
 
     st.markdown("---")
     st.subheader("📈 Earnings and Returns")
 
-    col13, col14, col15 = st.columns(3)
+    col7, col8, col9 = st.columns(3)
+
     render_metric(
-        col13, "Dividend Yield", f"{format_ratio(dividend_yield)}%",
-        "**Dividend Yield** shows the return from dividends relative to the stock price.",
-        "How much the company pays you back for holding its shares. Kind of like cashback but fancier.",
-        latex_formula=r"\text{Dividend Yield} = \left( \frac{\text{Annual Dividend}}{\text{Price}} \right) \times 100",
-        interpretation_note="- Greater Than 5% → High yield (check sustainability)\n - Between 2%–5% → Healthy for stable companies\n - Less than 2% → Low, common for growth stocks"
-    )
-    render_metric(
-        col14, "PE Ratio", format_ratio(pe_ratio),
-        "**P/E Ratio** compares the stock price to its earnings per share (EPS).",
-        "How expensive the stock is based on how much it earns. High P/E = You're expecting future growth — or maybe just speculating..",
-        latex_formula=r"\text{P/E Ratio} = \frac{\text{Price}}{\text{EPS}}",
-        interpretation_note=" - Less than 15 → Could be undervalued or troubled\n - Between 15-25 → Normal range for many sectors\n - Greater Than 25 → Growth stock or overvaluation"
+        col7, "Dividend Yield", f"{format_ratio(dividend_yield)}%",
+        HEADER_METRIC.get("Dividend Yield")['formal'],
+        HEADER_METRIC.get("Dividend Yield")['casual'],
+        latex_formula=HEADER_METRIC.get("Dividend Yield").get('latex', None),
+        interpretation_note=HEADER_METRIC.get("Dividend Yield")['guide']
     )
 
     render_metric(
-        col15, "EPS (TTM)", format_ratio(eps),
-        "**Earnings Per Share (EPS)** represents a company's net profit divided by outstanding shares (TTM = last 12 months).",
-        "This is your slice of the company’s pie. Bigger EPS? More pie!",
-        latex_formula=r"\text{EPS} = \frac{\text{Net Income}}{\text{Shares Outstanding}}",
-        interpretation_note="Compare EPS across years or with similar companies. Higher EPS generally signals better profitability."
+        col8, "PE Ratio", format_ratio(pe_ratio),
+        HEADER_METRIC.get("PE Ratio")['formal'],
+        HEADER_METRIC.get("PE Ratio")['casual'],
+        latex_formula=HEADER_METRIC.get("PE Ratio").get('latex', None),
+        interpretation_note=HEADER_METRIC.get("PE Ratio")['guide']
     )
 
-    col16, col17, _ = st.columns(3)
     render_metric(
-        col16, "PEG Ratio", format_ratio(stock_obj.peg_ratio),
-        "**PEG Ratio** adjusts the P/E ratio for expected earnings growth.",
-        "It tells you if you're paying too much for growth — think of it as a smarter P/E. Under 1? Could be a bargain.",
-        latex_formula=r"\text{PEG Ratio} = \frac{\text{P/E Ratio}}{\text{EPS Growth Rate (\%)}}",
-        interpretation_note="- Less than 1 → Could be undervalued\n- Between 1–2 → Fairly valued for many growth stocks\n- Greater than 2 → Possibly overvalued unless rapid growth continues \n\n if N\A then either data not available or Growth Rate is Negative so it'll be a Meaningless Quantity. You can verify this Below"
+        col9, "EPS (TTM)", format_ratio(eps),
+        HEADER_METRIC.get("EPS (TTM)")['formal'],
+        HEADER_METRIC.get("EPS (TTM)")['casual'],
+        latex_formula=HEADER_METRIC.get("EPS (TTM)").get('latex', None),
+        interpretation_note=HEADER_METRIC.get("EPS (TTM)")['guide']
     )
+
     render_metric(
-        col17, "P/B Ratio", format_ratio(stock_obj.pb_ratio),
-        "**P/B Ratio** compares the market price to the book value of the company.",
-        "Basically: how much are you paying for every dollar of net assets? High P/B might mean high expectations — or hype.",
-        latex_formula=r"\text{P/B Ratio} = \frac{\text{Market Price per Share}}{\text{Book Value per Share}}",
-        interpretation_note="- Less than 1 → Possibly undervalued or distressed\n- Between 1–3 → Normal for many industries\n- Greater than 3 → Investors expect high returns or brand value"
+        col7, "PEG Ratio", format_ratio(stock_obj.peg_ratio),
+        HEADER_METRIC.get("PEG Ratio")['formal'],
+        HEADER_METRIC.get("PEG Ratio")['casual'],
+        latex_formula=HEADER_METRIC.get("PEG Ratio").get('latex', None),
+        interpretation_note=HEADER_METRIC.get("PEG Ratio")['guide']
     )
 
-def display_grouped_financials_q(stock_obj, plot=True):
+    render_metric(
+        col8, "P/B Ratio", format_ratio(stock_obj.pb_ratio),
+        HEADER_METRIC.get("P/B Ratio")['formal'],
+        HEADER_METRIC.get("P/B Ratio")['casual'],
+        latex_formula=HEADER_METRIC.get("P/B Ratio").get('latex', None),
+        interpretation_note=HEADER_METRIC.get("P/B Ratio")['guide']
+    )
 
-    def scale_df(df):
-        columns = [x for x in df.columns if x not in ['Year', 'Quarter']]
-        new_df = df[['Year', 'Quarter']]
-        for column in columns:
-            max_val = df[column].abs().max()
-            if pd.isna(max_val):
-                scale = 1
-                suffix = ''
-            elif max_val >= 1e12:
-                scale = 1e12
-                suffix = "(Trillions)"
-            elif max_val >= 1e9:
-                scale = 1e9
-                suffix = "(Billions)"
-            elif max_val >= 1e6:
-                scale = 1e6
-                suffix = "(Millions)"
-            else:
-                scale = 1
-                suffix = ''
-            
-            if suffix != '':
-                new_col_name = f"{column} {suffix}"
-                new_df[new_col_name] = df[column] / scale
-            else:
-                new_df[column] = df[column]
-        return new_df
+    st.markdown("---")
+    st.subheader("📈 Advanced Valuation Metrics")
 
-    COLUMN_GROUPS = {
-        "Revenue & Profitability": [
-            "Revenue", "Gross Profit",
-            "Operating Income", "Net Income",
-        ],
-        "QoQ Revenue & Profitability": [
-            "Revenue QoQ", "Gross Profit QoQ",
-            "Operating Income QoQ","Net Income QoQ"
-        ],
-        "Cash Flow": [
-            "Operating Cash Flow",
-            "Capital Expenditure", "Free Cash Flow"
-        ],
-        "QoQ Cash Flow": [
-            "Operating Cash Flow QoQ",
-            "Free Cash Flow QoQ"
-        ],
-        "Balance Sheet Overview": [
-            "Total Assets", "Total Liabilities", "Equity"
-        ],
-        "Working Capital Components": [
-            "Current Assets", "Current Liabilities", "Inventory", "Cash", "Receivables"
-        ],
-        "Efficiency Inputs": [
-            "Invested Capital", "Retained Earnings", "EBIT", "EBIT QoQ"
-        ],
-        "EBIT QoQ": [
-            "EBIT QoQ"
-        ],
-        "Working Capital Derived": [
-            "Working Capital"
-        ]
-    }
+    col10, col11, col12 = st.columns(3)
 
-    # Define your explanation dictionary
-    metric_explanations = {
-        "Revenue": {
-            "formal": "**Revenue** is the total amount of income generated from normal business operations.",
-            "casual": "It's the top line — how much money the company made before any costs.",
-            "latex": None,
-            "guide": "- Higher revenue usually signals business growth.\n- Compare over time and across competitors."
-        },
-        "Revenue QoQ": {
-            "formal": "**Revenue QoQ** shows the percentage growth or decline in revenue compared to the previous quarter.",
-            "casual": "Did they sell more stuff than last quarter? That's what this shows.",
-            "latex": r"\text{Revenue QoQ} = \left(\frac{R_t - R_{t-1}}{R_{t-1}}\right) \times 100",
-            "guide": "- Above 5% = solid growth.\n- Negative = shrinking — investigate why."
-        },
-        "Gross Profit": {
-            "formal": "**Gross Profit** is Revenue minus Cost of Goods Sold (COGS).",
-            "casual": "What’s left after making the product but before paying the bills.",
-            "latex": r"\text{Gross Profit} = \text{Revenue} - \text{COGS}",
-            "guide": "- Consistent growth is a positive sign.\n- Volatility may indicate pricing or cost issues."
-        },
-        "Gross Profit QoQ": {
-            "formal": "**Gross Profit QoQ** shows quarter-over-quarter growth in gross profit.",
-            "casual": "Is the raw profit chunk growing each quarter? This answers that.",
-            "latex": r"\text{Gross Profit QoQ} = \left(\frac{GP_t - GP_{t-1}}{GP_{t-1}}\right) \times 100",
-            "guide": "- Look for steady or improving trends.\n- Sudden dips may signal cost issues."
-        },
-        "Operating Income": {
-            "formal": "**Operating Income** is earnings before interest and taxes (EBIT).",
-            "casual": "Profit from actual operations, before the accountants get fancy.",
-            "latex": r"\text{Operating Income} = \text{Gross Profit} - \text{Operating Expenses}",
-            "guide": "- Healthy operating income means the core business is profitable."
-        },
-        "Operating Income QoQ": {
-            "formal": "**Operating Income QoQ** shows the growth in operating income over quarters.",
-            "casual": "Are operations getting more efficient or just lucky?",
-            "latex": r"\text{OI QoQ} = \left(\frac{OI_t - OI_{t-1}}{OI_{t-1}}\right) \times 100",
-            "guide": "- Consistent growth is very bullish.\n- Sharp drops may be red flags."
-        },
-        "Net Income": {
-            "formal": "**Net Income** is total profit after all expenses, taxes, and costs.",
-            "casual": "The bottom line. What the company *actually* keeps.",
-            "latex": r"\text{Net Income} = \text{Revenue} - \text{Total Expenses}",
-            "guide": "- A must-watch metric for investors.\n- Negative = company lost money."
-        },
-        "Net Income QoQ": {
-            "formal": "**Net Income QoQ** shows percentage change in net income from previous quarter.",
-            "casual": "Is the final profit moving in the right direction?",
-            "latex": r"\text{Net Income QoQ} = \left(\frac{NI_t - NI_{t-1}}{NI_{t-1}}\right) \times 100",
-            "guide": "- Positive trend = company’s becoming more profitable.\n- Volatility can be risky."
-        },
-        "Operating Cash Flow": {
-            "formal": "**Operating Cash Flow (OCF)** is cash generated by core business activities.",
-            "casual": "Cash coming in from day-to-day operations — not investments or loans.",
-            "latex": None,
-            "guide": "- Positive OCF shows the business can sustain itself.\n- Negative OCF is a warning sign."
-        },
-        "Operating Cash Flow QoQ": {
-            "formal": "**OCF QoQ** shows the quarterly growth of operating cash flow.",
-            "casual": "Are they bringing in more real money from business? That’s the check.",
-            "latex": r"\text{OCF QoQ} = \left(\frac{OCF_t - OCF_{t-1}}{OCF_{t-1}}\right) \times 100",
-            "guide": "- Growth means strong operational efficiency.\n- Decline = dig into why."
-        },
-        "Capital Expenditure": {
-            "formal": "**Capital Expenditure (CapEx)** refers to funds used to acquire or upgrade assets.",
-            "casual": "Big spending on buildings, equipment, or new tech.",
-            "latex": None,
-            "guide": "- High CapEx can mean growth plans.\n- But too much = watch cash burn."
-        },
-        "Free Cash Flow": {
-            "formal": "**Free Cash Flow (FCF)** is the cash left after CapEx — it shows real financial strength.",
-            "casual": "What’s left to invest, repay debt, or reward shareholders.",
-            "latex": r"\text{FCF} = \text{Operating Cash Flow} - \text{CapEx}",
-            "guide": "- Positive FCF is ideal.\n- Negative FCF could mean expansion or trouble."
-        },
-        "Free Cash Flow QoQ": {
-            "formal": "**FCF QoQ** shows growth of Free Cash Flow across quarters.",
-            "casual": "Is the leftover money growing or drying up?",
-            "latex": r"\text{FCF QoQ} = \left(\frac{FCF_t - FCF_{t-1}}{FCF_{t-1}}\right) \times 100",
-            "guide": "- Growth = more flexibility.\n- Decline = check cash burn reasons."
-        },
-        "Total Assets": {
-            "formal": "**Total Assets** are everything the company owns — cash, buildings, inventory, etc.",
-            "casual": "The entire pile of stuff the business owns.",
-            "latex": r"\text{Assets} = \text{Liabilities} + \text{Equity}",
-            "guide": "- Bigger assets can mean more power.\n- Look at asset quality, not just size."
-        },
-        "Total Liabilities": {
-            "formal": "**Total Liabilities** represent all financial debts and obligations.",
-            "casual": "What the company owes — loans, bills, etc.",
-            "latex": None,
-            "guide": "- Watch rising liabilities.\n- Compare to assets and equity."
-        },
-        "Equity": {
-            "formal": "**Equity** is the residual value of assets after deducting liabilities.",
-            "casual": "What’s left for shareholders after paying off debts.",
-            "latex": r"\text{Equity} = \text{Assets} - \text{Liabilities}",
-            "guide": "- Positive equity = good.\n- Negative = serious trouble."
-        },
-        "Current Assets": {
-            "formal": "**Current Assets** are assets expected to be converted to cash within a year.",
-            "casual": "Short-term stuff: cash, inventory, receivables.",
-            "latex": None,
-            "guide": "- High current assets = strong short-term position."
-        },
-        "Current Liabilities": {
-            "formal": "**Current Liabilities** are obligations due within one year.",
-            "casual": "Bills and debts due soon.",
-            "latex": None,
-            "guide": "- Compare with current assets to assess liquidity."
-        },
-        "Inventory": {
-            "formal": "**Inventory** includes raw materials, work-in-progress, and finished goods.",
-            "casual": "Stuff sitting in the warehouse, ready to sell.",
-            "latex": None,
-            "guide": "- Rising inventory with flat sales = warning.\n- Compare to revenue."
-        },
-        "Cash": {
-            "formal": "**Cash** is liquid money the company holds.",
-            "casual": "Money ready to use — no strings attached.",
-            "latex": None,
-            "guide": "- Higher cash = safety buffer.\n- Too much idle cash? Could be better used."
-        },
-        "Receivables": {
-            "formal": "**Receivables** are amounts owed to the company by customers.",
-            "casual": "Unpaid customer bills — money they’re still waiting on.",
-            "latex": None,
-            "guide": "- Rising receivables = strong sales OR poor collections."
-        },
-        "Invested Capital": {
-            "formal": "**Invested Capital** is the total capital invested by shareholders and lenders.",
-            "casual": "All the money put into running the business.",
-            "latex": r"\text{Invested Capital} = \text{Equity} + \text{Debt} - \text{Cash}",
-            "guide": "- Used in ROIC calculations.\n- Efficiency of this capital matters."
-        },
-        "Retained Earnings": {
-            "formal": "**Retained Earnings** are profits reinvested into the company, not paid as dividends.",
-            "casual": "Past profits the company kept instead of sharing.",
-            "latex": None,
-            "guide": "- Growth means profit reinvestment.\n- Too much = maybe no better use found."
-        },
-        "EBIT": {
-            "formal": "**EBIT (Earnings Before Interest & Taxes)** is core profit from operations.",
-            "casual": "The profit before banks or taxmen get involved.",
-            "latex": r"\text{EBIT} = \text{Revenue} - \text{COGS} - \text{Operating Expenses}",
-            "guide": "- Used in valuation and efficiency ratios.\n- Excludes tax & interest noise."
-        },
-        "EBIT QoQ": {
-            "formal": "**EBIT QoQ** shows quarter-over-quarter growth in EBIT.",
-            "casual": "Is the operating engine becoming more profitable?",
-            "latex": r"\text{EBIT QoQ} = \left(\frac{EBIT_t - EBIT_{t-1}}{EBIT_{t-1}}\right) \times 100",
-            "guide": "- Strong signal of operational strength if rising consistently."
-        },
-        "Working Capital": {
-            "formal": "**Working Capital** is Current Assets minus Current Liabilities.",
-            "casual": "Money left to run day-to-day operations.",
-            "latex": r"\text{Working Capital} = \text{Current Assets} - \text{Current Liabilities}",
-            "guide": "- Positive = healthy liquidity.\n- Negative = short-term trouble risk."
-        }
-    }
+    render_metric(
+        col10, "EV/FCF", format_ratio(stock_obj.ev_fcf),
+        HEADER_METRIC["EV/FCF"]["formal"],
+         HEADER_METRIC["EV/FCF"]["casual"],
+        latex_formula= HEADER_METRIC["EV/FCF"]["latex"],
+        interpretation_note= HEADER_METRIC["EV/FCF"]["guide"]
+    )
 
-    for group_name, cols in COLUMN_GROUPS.items():
+    render_metric(
+        col11, "FCF Yield", f"{format_ratio(stock_obj.fcf_yield)}%",
+        HEADER_METRIC["FCF Yield"]["formal"],
+         HEADER_METRIC["FCF Yield"]["casual"],
+        latex_formula= HEADER_METRIC["FCF Yield"]["latex"],
+        interpretation_note= HEADER_METRIC["FCF Yield"]["guide"]
+    )
+
+    render_metric(
+        col12, "EV/EBITDA", format_ratio(stock_obj.ev_ebit),
+         HEADER_METRIC["EV/EBITDA"]["formal"],
+         HEADER_METRIC["EV/EBITDA"]["casual"],
+        latex_formula= HEADER_METRIC["EV/EBITDA"]["latex"],
+        interpretation_note= HEADER_METRIC["EV/EBITDA"]["guide"]
+    )
+    
+    render_metric(
+        col10, "EV/EBITDA", format_ratio(stock_obj.ev_ebit),
+         HEADER_METRIC["EV/EBITDA"]["formal"],
+         HEADER_METRIC["EV/EBITDA"]["casual"],
+        latex_formula= HEADER_METRIC["EV/EBITDA"]["latex"],
+        interpretation_note= HEADER_METRIC["EV/EBITDA"]["guide"]
+    )
+
+    render_metric(
+        col11, "Dividend Payout Ratio", f"{format_ratio(stock_obj.dividend_payout_ratio)}%",
+         HEADER_METRIC["Dividend Payout Ratio"]["formal"],
+         HEADER_METRIC["Dividend Payout Ratio"]["casual"],
+        latex_formula= HEADER_METRIC["Dividend Payout Ratio"]["latex"],
+        interpretation_note= HEADER_METRIC["Dividend Payout Ratio"]["guide"]
+    )
+
+
+    st.subheader(f"📈 Historical Price Chart for {stock_obj.ticker}")
+
+    if view_mode == 'Yearly':
+        hist_data = stock_obj.ypricehistory
+        report_dates = stock_obj.y_dates
+    else:
+        hist_data = stock_obj.qpricehistory
+        report_dates = stock_obj.q_dates
+
+    fig = go.Figure()
+    fig.add_trace(go.Candlestick(x=hist_data.index,
+                    open=hist_data['Open'],
+                    high=hist_data['High'],
+                    low=hist_data['Low'],
+                    close=hist_data['Close'], name='Price'))
+    
+    for date in report_dates:
+        fig.add_shape(
+            type='line',
+            x0=date,
+            x1=date,
+            y0=hist_data['Low'].min(),
+            y1=hist_data['High'].max(),
+            line=dict(color='royalblue', width=1, dash='dot'),
+            xref='x',
+            yref='y'
+        )
+
+
+    if view_mode == 'Yearly':
+        fig.update_layout(
+            title=f'{stock_obj.info.get("longName", stock_obj.ticker)} Stock Price Over Last 5 Years',
+            yaxis_title=f'Price in {info.get("financialCurrency")}',
+            xaxis_rangeslider_visible=True,
+            hovermode='x unified',
+            template='plotly_dark'
+        )
+    else:
+        fig.update_layout(
+            title=f'{stock_obj.info.get("longName", stock_obj.ticker)} Stock Price Over Last Year',
+            yaxis_title=f'Price in {info.get("financialCurrency")}',
+            xaxis_rangeslider_visible=True,
+            hovermode='x unified',
+            template='plotly_dark',
+            height=800,
+            yaxis=dict(
+                fixedrange=False
+            )
+        )
+    st.plotly_chart(fig, use_container_width=True)
+
+def display_grouped_financials_q():
+    for group_name, cols in FINANCIAL_GROUPS_Q.items():
         available_cols = [col for col in cols if col in stock_obj.qfinancials.columns]
 
         st.subheader(f"📘 {group_name}")
 
         show_df = scale_df(stock_obj.qfinancials[["Year", "Quarter"] + available_cols])
-        st.dataframe(show_df)
+        st.dataframe(show_df.reset_index(drop=True))
 
-        if plot:
+        if plot_f:
             plot_df = show_df.copy()
             plot_df['Quarter_Label'] = plot_df['Year'].astype(str) + ' Q' + plot_df['Quarter'].astype(str)
 
@@ -448,7 +361,7 @@ def display_grouped_financials_q(stock_obj, plot=True):
         if dummy_mode:
             with st.expander("🧠 Learn About These Metrics"):
                 for col in available_cols:
-                    exp = metric_explanations.get(col)
+                    exp = FINANCIAL_METRIC_EXPLANATIONS_Q.get(col)
                     if exp:
                         st.markdown(f"### 🔍 {col}")
                         st.markdown(exp["formal"])
@@ -459,245 +372,32 @@ def display_grouped_financials_q(stock_obj, plot=True):
                         st.markdown(exp["guide"])
                         st.markdown("---")
 
-def display_grouped_financials_y(stock_obj, plot=True):
-
-    def scale_df(df):
-        columns = [x for x in df.columns if x not in ['Year']]
-        new_df = df[['Year']]
+def display_grouped_ratios_q():
+    def adjust_ratios(df):
+        columns = [x for x in df.columns if x not in ['Year', 'Quarter']]
+        new_df = df[['Year', 'Quarter']]
         for column in columns:
-            max_val = df[column].abs().max()
-            if pd.isna(max_val):
-                scale = 1
-                suffix = ''
-            elif max_val >= 1e12:
-                scale = 1e12
-                suffix = "(Trillions)"
-            elif max_val >= 1e9:
-                scale = 1e9
-                suffix = "(Billions)"
-            elif max_val >= 1e6:
-                scale = 1e6
-                suffix = "(Millions)"
-            else:
-                scale = 1
-                suffix = ''
-            
-            if suffix != '':
-                new_col_name = f"{column} {suffix}"
-                new_df[new_col_name] = df[column] / scale
-            else:
-                new_df[column] = df[column]
+            new_df[column] = df[column].round(2)
+        new_df.dropna(inplace = True)
         return new_df
 
-    COLUMN_GROUPS = {
-        "Revenue & Profitability": [
-            "Revenue", "Gross Profit",
-            "Operating Income", "Net Income",
-        ],
-        "QoQ Revenue & Profitability": [
-            "Revenue YoY", "Gross Profit YoY",
-            "Operating Income YoY","Net Income YoY"
-        ],
-        "Cash Flow": [
-            "Operating Cash Flow",
-            "Capital Expenditure", "Free Cash Flow"
-        ],
-        "YoY Cash Flow": [
-            "Operating Cash Flow YoY",
-            "Free Cash Flow YoY"
-        ],
-        "Balance Sheet Overview": [
-            "Total Assets", "Total Liabilities", "Equity"
-        ],
-        "Working Capital Components": [
-            "Current Assets", "Current Liabilities", "Inventory", "Cash", "Receivables"
-        ],
-        "Efficiency Inputs": [
-            "Invested Capital", "Retained Earnings", "EBIT"
-        ],
-        "EBIT YoY": [
-            "EBIT YoY"
-        ],
-        "Working Capital Derived": [
-            "Working Capital"
-        ]
-    }
-
-    # Define your explanation dictionary
-    metric_explanations = {
-        "Revenue": {
-            "formal": "**Revenue** is the total amount of income generated from normal business operations.",
-            "casual": "It's the top line — how much money the company made before any costs.",
-            "latex": None,
-            "guide": "- Higher revenue usually signals business growth.\n- Compare over time and across competitors."
-        },
-        "Revenue QoQ": {
-            "formal": "**Revenue QoQ** shows the percentage growth or decline in revenue compared to the previous quarter.",
-            "casual": "Did they sell more stuff than last quarter? That's what this shows.",
-            "latex": r"\text{Revenue QoQ} = \left(\frac{R_t - R_{t-1}}{R_{t-1}}\right) \times 100",
-            "guide": "- Above 5% = solid growth.\n- Negative = shrinking — investigate why."
-        },
-        "Gross Profit": {
-            "formal": "**Gross Profit** is Revenue minus Cost of Goods Sold (COGS).",
-            "casual": "What’s left after making the product but before paying the bills.",
-            "latex": r"\text{Gross Profit} = \text{Revenue} - \text{COGS}",
-            "guide": "- Consistent growth is a positive sign.\n- Volatility may indicate pricing or cost issues."
-        },
-        "Gross Profit QoQ": {
-            "formal": "**Gross Profit QoQ** shows quarter-over-quarter growth in gross profit.",
-            "casual": "Is the raw profit chunk growing each quarter? This answers that.",
-            "latex": r"\text{Gross Profit QoQ} = \left(\frac{GP_t - GP_{t-1}}{GP_{t-1}}\right) \times 100",
-            "guide": "- Look for steady or improving trends.\n- Sudden dips may signal cost issues."
-        },
-        "Operating Income": {
-            "formal": "**Operating Income** is earnings before interest and taxes (EBIT).",
-            "casual": "Profit from actual operations, before the accountants get fancy.",
-            "latex": r"\text{Operating Income} = \text{Gross Profit} - \text{Operating Expenses}",
-            "guide": "- Healthy operating income means the core business is profitable."
-        },
-        "Operating Income QoQ": {
-            "formal": "**Operating Income QoQ** shows the growth in operating income over quarters.",
-            "casual": "Are operations getting more efficient or just lucky?",
-            "latex": r"\text{OI QoQ} = \left(\frac{OI_t - OI_{t-1}}{OI_{t-1}}\right) \times 100",
-            "guide": "- Consistent growth is very bullish.\n- Sharp drops may be red flags."
-        },
-        "Net Income": {
-            "formal": "**Net Income** is total profit after all expenses, taxes, and costs.",
-            "casual": "The bottom line. What the company *actually* keeps.",
-            "latex": r"\text{Net Income} = \text{Revenue} - \text{Total Expenses}",
-            "guide": "- A must-watch metric for investors.\n- Negative = company lost money."
-        },
-        "Net Income QoQ": {
-            "formal": "**Net Income QoQ** shows percentage change in net income from previous quarter.",
-            "casual": "Is the final profit moving in the right direction?",
-            "latex": r"\text{Net Income QoQ} = \left(\frac{NI_t - NI_{t-1}}{NI_{t-1}}\right) \times 100",
-            "guide": "- Positive trend = company’s becoming more profitable.\n- Volatility can be risky."
-        },
-        "Operating Cash Flow": {
-            "formal": "**Operating Cash Flow (OCF)** is cash generated by core business activities.",
-            "casual": "Cash coming in from day-to-day operations — not investments or loans.",
-            "latex": None,
-            "guide": "- Positive OCF shows the business can sustain itself.\n- Negative OCF is a warning sign."
-        },
-        "Operating Cash Flow QoQ": {
-            "formal": "**OCF QoQ** shows the quarterly growth of operating cash flow.",
-            "casual": "Are they bringing in more real money from business? That’s the check.",
-            "latex": r"\text{OCF QoQ} = \left(\frac{OCF_t - OCF_{t-1}}{OCF_{t-1}}\right) \times 100",
-            "guide": "- Growth means strong operational efficiency.\n- Decline = dig into why."
-        },
-        "Capital Expenditure": {
-            "formal": "**Capital Expenditure (CapEx)** refers to funds used to acquire or upgrade assets.",
-            "casual": "Big spending on buildings, equipment, or new tech.",
-            "latex": None,
-            "guide": "- High CapEx can mean growth plans.\n- But too much = watch cash burn."
-        },
-        "Free Cash Flow": {
-            "formal": "**Free Cash Flow (FCF)** is the cash left after CapEx — it shows real financial strength.",
-            "casual": "What’s left to invest, repay debt, or reward shareholders.",
-            "latex": r"\text{FCF} = \text{Operating Cash Flow} - \text{CapEx}",
-            "guide": "- Positive FCF is ideal.\n- Negative FCF could mean expansion or trouble."
-        },
-        "Free Cash Flow QoQ": {
-            "formal": "**FCF QoQ** shows growth of Free Cash Flow across quarters.",
-            "casual": "Is the leftover money growing or drying up?",
-            "latex": r"\text{FCF QoQ} = \left(\frac{FCF_t - FCF_{t-1}}{FCF_{t-1}}\right) \times 100",
-            "guide": "- Growth = more flexibility.\n- Decline = check cash burn reasons."
-        },
-        "Total Assets": {
-            "formal": "**Total Assets** are everything the company owns — cash, buildings, inventory, etc.",
-            "casual": "The entire pile of stuff the business owns.",
-            "latex": r"\text{Assets} = \text{Liabilities} + \text{Equity}",
-            "guide": "- Bigger assets can mean more power.\n- Look at asset quality, not just size."
-        },
-        "Total Liabilities": {
-            "formal": "**Total Liabilities** represent all financial debts and obligations.",
-            "casual": "What the company owes — loans, bills, etc.",
-            "latex": None,
-            "guide": "- Watch rising liabilities.\n- Compare to assets and equity."
-        },
-        "Equity": {
-            "formal": "**Equity** is the residual value of assets after deducting liabilities.",
-            "casual": "What’s left for shareholders after paying off debts.",
-            "latex": r"\text{Equity} = \text{Assets} - \text{Liabilities}",
-            "guide": "- Positive equity = good.\n- Negative = serious trouble."
-        },
-        "Current Assets": {
-            "formal": "**Current Assets** are assets expected to be converted to cash within a year.",
-            "casual": "Short-term stuff: cash, inventory, receivables.",
-            "latex": None,
-            "guide": "- High current assets = strong short-term position."
-        },
-        "Current Liabilities": {
-            "formal": "**Current Liabilities** are obligations due within one year.",
-            "casual": "Bills and debts due soon.",
-            "latex": None,
-            "guide": "- Compare with current assets to assess liquidity."
-        },
-        "Inventory": {
-            "formal": "**Inventory** includes raw materials, work-in-progress, and finished goods.",
-            "casual": "Stuff sitting in the warehouse, ready to sell.",
-            "latex": None,
-            "guide": "- Rising inventory with flat sales = warning.\n- Compare to revenue."
-        },
-        "Cash": {
-            "formal": "**Cash** is liquid money the company holds.",
-            "casual": "Money ready to use — no strings attached.",
-            "latex": None,
-            "guide": "- Higher cash = safety buffer.\n- Too much idle cash? Could be better used."
-        },
-        "Receivables": {
-            "formal": "**Receivables** are amounts owed to the company by customers.",
-            "casual": "Unpaid customer bills — money they’re still waiting on.",
-            "latex": None,
-            "guide": "- Rising receivables = strong sales OR poor collections."
-        },
-        "Invested Capital": {
-            "formal": "**Invested Capital** is the total capital invested by shareholders and lenders.",
-            "casual": "All the money put into running the business.",
-            "latex": r"\text{Invested Capital} = \text{Equity} + \text{Debt} - \text{Cash}",
-            "guide": "- Used in ROIC calculations.\n- Efficiency of this capital matters."
-        },
-        "Retained Earnings": {
-            "formal": "**Retained Earnings** are profits reinvested into the company, not paid as dividends.",
-            "casual": "Past profits the company kept instead of sharing.",
-            "latex": None,
-            "guide": "- Growth means profit reinvestment.\n- Too much = maybe no better use found."
-        },
-        "EBIT": {
-            "formal": "**EBIT (Earnings Before Interest & Taxes)** is core profit from operations.",
-            "casual": "The profit before banks or taxmen get involved.",
-            "latex": r"\text{EBIT} = \text{Revenue} - \text{COGS} - \text{Operating Expenses}",
-            "guide": "- Used in valuation and efficiency ratios.\n- Excludes tax & interest noise."
-        },
-        "EBIT QoQ": {
-            "formal": "**EBIT QoQ** shows quarter-over-quarter growth in EBIT.",
-            "casual": "Is the operating engine becoming more profitable?",
-            "latex": r"\text{EBIT QoQ} = \left(\frac{EBIT_t - EBIT_{t-1}}{EBIT_{t-1}}\right) \times 100",
-            "guide": "- Strong signal of operational strength if rising consistently."
-        },
-        "Working Capital": {
-            "formal": "**Working Capital** is Current Assets minus Current Liabilities.",
-            "casual": "Money left to run day-to-day operations.",
-            "latex": r"\text{Working Capital} = \text{Current Assets} - \text{Current Liabilities}",
-            "guide": "- Positive = healthy liquidity.\n- Negative = short-term trouble risk."
-        }
-    }
-
-    for group_name, cols in COLUMN_GROUPS.items():
-        available_cols = [col for col in cols if col in stock_obj.yfinancials.columns]
+    for group_name, cols in RATIO_GROUPS.items():
+        available_cols = [col for col in cols if col in stock_obj.qratios.columns]
+        if not available_cols:
+            continue
 
         st.subheader(f"📘 {group_name}")
+        show_df = adjust_ratios(stock_obj.qratios[["Year", "Quarter"] + available_cols])
+        st.dataframe(show_df.reset_index(drop = True))
 
-        show_df = scale_df(stock_obj.yfinancials[["Year"] + available_cols])
-        st.dataframe(show_df)
-
-        if plot:
+        if plot_r:
             plot_df = show_df.copy()
+            plot_df['Quarter_Label'] = plot_df['Year'].astype(str) + ' Q' + plot_df['Quarter'].astype(str)
 
             fig = go.Figure()
-            for col in plot_df.columns.difference(['Year']):
+            for col in plot_df.columns.difference(['Year', 'Quarter', 'Quarter_Label']):
                 fig.add_trace(go.Scatter(
-                    x=plot_df['Year'],
+                    x=plot_df['Quarter_Label'],
                     y=plot_df[col],
                     mode='lines+markers',
                     name=col
@@ -712,11 +412,10 @@ def display_grouped_financials_y(stock_obj, plot=True):
             )
             st.plotly_chart(fig, use_container_width=True)
 
-        # Dummy Mode Explanation
         if dummy_mode:
-            with st.expander("🧠 Learn About These Metrics"):
+            with st.expander("📘 Explanation of Ratios"):
                 for col in available_cols:
-                    exp = metric_explanations.get(col)
+                    exp = RATIO_EXPLANATIONS.get(col)
                     if exp:
                         st.markdown(f"### 🔍 {col}")
                         st.markdown(exp["formal"])
@@ -727,20 +426,150 @@ def display_grouped_financials_y(stock_obj, plot=True):
                         st.markdown(exp["guide"])
                         st.markdown("---")
 
+def display_grouped_financials_y():
+    for group_name, cols in FINANCIAL_GROUPS_Y.items():
+        available_cols = [col for col in cols if col in stock_obj.yfinancials.columns]
 
-# --- Load Stock Data ---
-if ticker:
+        st.subheader(f"📘 {group_name}")
+
+        show_df = scale_df(stock_obj.yfinancials[["Year"] + available_cols])
+        st.dataframe(show_df.reset_index(drop = True))
+
+        if plot_f:
+            plot_df = show_df.copy()
+
+            fig = go.Figure()
+            for col in plot_df.columns.difference(['Year']):
+                fig.add_trace(go.Scatter(
+                    x=plot_df['Year'],
+                    y=plot_df[col],
+                    mode='lines+markers',
+                    name=col
+                ))
+
+            fig.update_layout(
+                title=group_name,
+                xaxis_title='Years',
+                yaxis_title='Values',
+                hovermode='x unified',
+                template='plotly_white'
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+        # Dummy Mode Explanation
+        if dummy_mode:
+            with st.expander("🧠 Learn About These Metrics"):
+                for col in available_cols:
+                    exp = FINANCIAL_METRIC_EXPLANATIONS_Y.get(col)
+                    if exp:
+                        st.markdown(f"### 🔍 {col}")
+                        st.markdown(exp["formal"])
+                        if exp.get("latex"):
+                            st.latex(exp["latex"])
+                        st.markdown(exp["casual"])
+                        st.markdown("🔎 **Interpretation Guide:**")
+                        st.markdown(exp["guide"])
+                        st.markdown("---")
+
+def display_grouped_ratios_y():
+    def adjust_ratios(df):
+        columns = [x for x in df.columns if x not in ['Year']]
+        new_df = df[['Year']]
+        for column in columns:
+            new_df[column] = df[column].round(2)
+        new_df.dropna(inplace = True)
+        return new_df
+
+    for group_name, cols in RATIO_GROUPS.items():
+        available_cols = [col for col in cols if col in stock_obj.yratios.columns]
+        if not available_cols:
+            continue
+
+        st.subheader(f"📘 {group_name}")
+        show_df = adjust_ratios(stock_obj.yratios[["Year"] + available_cols])
+        st.dataframe(show_df.reset_index(drop = True))
+
+        if plot_r:
+            plot_df = show_df.copy()
+
+            fig = go.Figure()
+            for col in plot_df.columns.difference(['Year']):
+                fig.add_trace(go.Scatter(
+                    x=plot_df['Year'],
+                    y=plot_df[col],
+                    mode='lines+markers',
+                    name=col
+                ))
+
+            fig.update_layout(
+                title=group_name,
+                xaxis_title='Years',
+                yaxis_title='Values',
+                hovermode='x unified',
+                template='plotly_white'
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+        if dummy_mode:
+            with st.expander("📘 Explanation of Ratios"):
+                for col in available_cols:
+                    exp = RATIO_EXPLANATIONS.get(col)
+                    if exp:
+                        st.markdown(f"### 🔍 {col}")
+                        st.markdown(exp["formal"])
+                        if exp.get("latex"):
+                            st.latex(exp["latex"])
+                        st.markdown(exp["casual"])
+                        st.markdown("🔎 **Interpretation Guide:**")
+                        st.markdown(exp["guide"])
+                        st.markdown("---")
+
+def display_dupont_analysis(type):
+    if type == 'q':
+        latest_data = stock_obj.qratios.iloc[-1]
+    else:
+        latest_data = stock_obj.yratios.iloc[-1]
+
+    npm = latest_data.get("Net Profit Margin", 0)
+    asset_turnover = latest_data.get("Asset Turnover", 0)
+    leverage = latest_data.get("Financial Leverage", 0)
+    roe = latest_data.get("ROE", 0)
+
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Net Profit Margin", f"{npm:.2f}%", help="How much profit the company makes per dollar of sales.", label_visibility='visible')
+    col2.metric("Asset Turnover", f"{asset_turnover:.2f}x", help="How efficiently the company uses its assets to generate sales.")
+    col3.metric("Financial Leverage", f"{leverage:.2f}x", help="How much the company relies on debt to finance its assets.")
+    col4.metric("Calculated ROE", f"{roe:.2f}%", help="The final return generated for shareholders.")
+
+
+def get_data():
     stock_obj = stock(ticker)
     stock_obj.calculate_quarterly_ratios()
     stock_obj.calculate_yearly_ratios()
+    return stock_obj
 
-    display_company_header(stock_obj)
+if ticker:
+    stock_obj = get_data()
+    display_company_header()
 
     # --- Display Mode Logic ---
     if view_mode == "Latest":
         st.subheader("📅 Latest Quarter")
     elif view_mode == 'Quarterly':
-        display_grouped_financials_q(stock_obj)
+        st.title("Financials")
+        display_grouped_financials_q()
+        st.title("Ratios")
+        display_grouped_ratios_q()
+        st.title("DuPont Analysis")
+        display_dupont_analysis(type = 'q')
     elif view_mode == 'Yearly':
-        display_grouped_financials_y(stock_obj)
+        st.title("Financials")
+        display_grouped_financials_y()
+        st.title("Ratios")
+        display_grouped_ratios_y()
+        st.title("DuPont Analysis")
+        display_dupont_analysis(type = 'y')
+    
 
+
+st.warning("\n".join(stock_obj.errors))
