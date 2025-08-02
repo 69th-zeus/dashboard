@@ -12,14 +12,15 @@ st.set_page_config(page_title="Dashboard", layout="wide")
 # Sidebar Inputs
 st.sidebar.title("Options")
 ticker = st.sidebar.text_input("Enter Ticker Symbol", value="MSFT")
-view_mode = st.sidebar.radio("Select Your View Mode", ["Latest", "Quarterly", 'Yearly'])
+view_mode = st.sidebar.radio("Select Your View Mode", ["Quarterly", 'Yearly'])
 dummy_mode = st.sidebar.checkbox("Enable Dummy Mode")
 plot_f = st.sidebar.checkbox("Plot Financial's Graphs")
 plot_r = st.sidebar.checkbox("Plot Ratios' Graphs")
+about_project = st.sidebar.checkbox("Display About Page")
 
 def scale_df(df):
         columns = [x for x in df.columns if x not in ['Year', 'Quarter']]
-        new_df = df[['Year', 'Quarter']]
+        new_df = df[['Year', 'Quarter']] if 'Quarter' in df.columns else df[['Year']]
         for column in columns:
             max_val = df[column].abs().max()
             if pd.isna(max_val):
@@ -45,6 +46,22 @@ def scale_df(df):
                 new_df[column] = df[column]
             new_df.dropna(inplace = True)
         return new_df
+
+def render_metric(col, label, value, formal_explanation, casual_explanation, latex_formula=None, interpretation_note=None):
+    """Renders Metrics on the Screen"""
+    col.metric(label, value)
+    if dummy_mode:
+        with col.expander("📘 Click here for explanation"):
+            st.markdown(formal_explanation)
+            st.markdown("---")
+            if latex_formula:
+                st.latex(latex_formula)
+                st.markdown("---")
+            st.markdown(casual_explanation)
+            if interpretation_note:
+                st.markdown("---")
+                st.markdown("🔍 **Interpretation Guide:**")
+                st.markdown(interpretation_note)
 
 def display_company_header():
     info = stock_obj.info
@@ -75,22 +92,6 @@ def display_company_header():
             return round(float(value), 3)
         except:
             return "N/A"
-
-    def render_metric(col, label, value, formal_explanation, casual_explanation, latex_formula=None, interpretation_note=None):
-        """Renders Metrics on the Screen"""
-        col.metric(label, value)
-        if dummy_mode:
-            with col.expander("📘 Click here for explanation"):
-                st.markdown(formal_explanation)
-                st.markdown("---")
-                if latex_formula:
-                    st.latex(latex_formula)
-                    st.markdown("---")
-                st.markdown(casual_explanation)
-                if interpretation_note:
-                    st.markdown("---")
-                    st.markdown("🔍 **Interpretation Guide:**")
-                    st.markdown(interpretation_note)
 
     # General Info
     company_name = info.get("longName", stock_obj.ticker)
@@ -257,17 +258,9 @@ def display_company_header():
         latex_formula= HEADER_METRIC["EV/EBITDA"]["latex"],
         interpretation_note= HEADER_METRIC["EV/EBITDA"]["guide"]
     )
-    
-    render_metric(
-        col10, "EV/EBITDA", format_ratio(stock_obj.ev_ebit),
-         HEADER_METRIC["EV/EBITDA"]["formal"],
-         HEADER_METRIC["EV/EBITDA"]["casual"],
-        latex_formula= HEADER_METRIC["EV/EBITDA"]["latex"],
-        interpretation_note= HEADER_METRIC["EV/EBITDA"]["guide"]
-    )
 
     render_metric(
-        col11, "Dividend Payout Ratio", f"{format_ratio(stock_obj.dividend_payout_ratio)}%",
+        col10, "Dividend Payout Ratio", f"{format_ratio(stock_obj.dividend_payout_ratio)}%",
          HEADER_METRIC["Dividend Payout Ratio"]["formal"],
          HEADER_METRIC["Dividend Payout Ratio"]["casual"],
         latex_formula= HEADER_METRIC["Dividend Payout Ratio"]["latex"],
@@ -303,18 +296,9 @@ def display_company_header():
             yref='y'
         )
 
-
     if view_mode == 'Yearly':
         fig.update_layout(
             title=f'{stock_obj.info.get("longName", stock_obj.ticker)} Stock Price Over Last 5 Years',
-            yaxis_title=f'Price in {info.get("financialCurrency")}',
-            xaxis_rangeslider_visible=True,
-            hovermode='x unified',
-            template='plotly_dark'
-        )
-    else:
-        fig.update_layout(
-            title=f'{stock_obj.info.get("longName", stock_obj.ticker)} Stock Price Over Last Year',
             yaxis_title=f'Price in {info.get("financialCurrency")}',
             xaxis_rangeslider_visible=True,
             hovermode='x unified',
@@ -324,7 +308,28 @@ def display_company_header():
                 fixedrange=False
             )
         )
+    else:
+        fig.update_layout(
+            title=f'{stock_obj.info.get("longName", stock_obj.ticker)} Stock Price Over Last Year',
+            yaxis_title=f'Price in {info.get("financialCurrency")}',
+            xaxis_rangeslider_visible=True,
+            hovermode='x unified',
+            template='plotly',
+            height=800,
+            yaxis=dict(
+                fixedrange=False
+            )
+        )
     st.plotly_chart(fig, use_container_width=True)
+    
+    if dummy_mode:
+        with st.expander("📘 Click here for explanation"):
+            st.markdown(HISTORICAL_CHART["formal"])
+            st.markdown("---")
+            st.markdown(HISTORICAL_CHART["casual"])
+            st.markdown("---")
+            st.markdown("🔍 **Interpretation Guide:**")
+            st.markdown(HISTORICAL_CHART["guide"])
 
 def display_grouped_financials_q():
     for group_name, cols in FINANCIAL_GROUPS_Q.items():
@@ -541,35 +546,81 @@ def display_dupont_analysis(type):
     col3.metric("Financial Leverage", f"{leverage:.2f}x", help="How much the company relies on debt to finance its assets.")
     col4.metric("Calculated ROE", f"{roe:.2f}%", help="The final return generated for shareholders.")
 
+    if dummy_mode:
+        with st.expander("📘 Click here for explanation of DuPont Analysis"):
+            st.markdown(DUPONT_EXPLANATION["formal"])
+            st.markdown("---")
+            st.latex(DUPONT_EXPLANATION["latex"])
+            st.markdown("---")
+            st.markdown(DUPONT_EXPLANATION["casual"])
+            st.markdown("---")
+            st.markdown("🔍 **Interpretation Guide:**")
+            st.markdown(DUPONT_EXPLANATION["guide"])
+
+def display_piotroski_score():
+    st.write("If The Company Issue No New Shares betwen Year in Index and the Previous Year then type 1 Otherwise 0 in the the below table")
+    f_score_y = stock_obj.f_score_y
+    new_shares_issued = st.data_editor(f_score_y["No New Shares Issued"],
+                               key = 'piotroski_editor',
+                               use_container_width= True,
+                               disabled=['Year'])
+    
+    f_score_y["No New Shares Issued"] = new_shares_issued.astype(int)
+    score_cols = [col for col in f_score_y.columns if col != "F Score"]
+    f_score_y["F Score"] = f_score_y[score_cols].sum(axis = 1)
+
+    st.dataframe(f_score_y)
+
+    if dummy_mode:
+        with st.expander("📘 Click here for explanation of Piotroski F-Score"):
+            st.markdown(PIOTROSKI_EXPLANATION["formal"])
+            st.markdown("---")
+            st.markdown(PIOTROSKI_EXPLANATION["casual"])
+            st.markdown("---")
+            st.markdown("🔍 **Interpretation Guide:**")
+            st.markdown(PIOTROSKI_EXPLANATION["guide"])
 
 def get_data():
     stock_obj = stock(ticker)
     stock_obj.calculate_quarterly_ratios()
     stock_obj.calculate_yearly_ratios()
+    stock_obj.one_time_ratios()
+    stock_obj.piotroski_f_score_yearly()
     return stock_obj
 
-if ticker:
-    stock_obj = get_data()
-    display_company_header()
+def about_page():
+    st.title("📘 About This Financial Dashboard")
+    st.markdown(ABOUT_PAGE)
 
-    # --- Display Mode Logic ---
-    if view_mode == "Latest":
-        st.subheader("📅 Latest Quarter")
-    elif view_mode == 'Quarterly':
-        st.title("Financials")
-        display_grouped_financials_q()
-        st.title("Ratios")
-        display_grouped_ratios_q()
-        st.title("DuPont Analysis")
-        display_dupont_analysis(type = 'q')
-    elif view_mode == 'Yearly':
-        st.title("Financials")
-        display_grouped_financials_y()
-        st.title("Ratios")
-        display_grouped_ratios_y()
-        st.title("DuPont Analysis")
-        display_dupont_analysis(type = 'y')
-    
+def main():
+    global stock_obj
+    if not about_project:
+        if ticker:
+            stock_obj = get_data()
+            display_company_header()
 
+            if view_mode == 'Quarterly':
+                st.title("Financials")
+                display_grouped_financials_q()
+                st.title("Ratios")
+                display_grouped_ratios_q()
+                st.title("DuPont Analysis")
+                display_dupont_analysis(type = 'q')
+            elif view_mode == 'Yearly':
+                st.title("Financials")
+                display_grouped_financials_y()
+                st.title("Ratios")
+                display_grouped_ratios_y()
+                st.title("DuPont Analysis")
+                display_dupont_analysis(type = 'y')
+                st.title("Piotroski F Score")
+                display_piotroski_score()
 
-st.warning("\n".join(stock_obj.errors))
+            if stock_obj.errors:
+                st.warning("⚠️ Some data couldn't be retrieved:")
+                for err in stock_obj.errors:
+                    st.text(f"- {err}")
+    else:
+        about_page()
+        
+main()

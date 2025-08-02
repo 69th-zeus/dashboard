@@ -64,16 +64,16 @@ class stock():
         for date in self.q_dates:
             try:
                 # Calculating Financials
-                revenue = self.q_income_stmt.loc[date, "Total Revenue"]
-                net_income = self.q_income_stmt.loc[date, "Net Income"]
-                gross_profit = self.q_income_stmt.loc[date, "Gross Profit"]
-                operating_income = self.q_income_stmt.loc[date, "Operating Income"]
-                total_assets = self.q_balance_sheet.loc[date, "Total Assets"]
-                total_liabilities = self.q_balance_sheet.loc[date, "Total Liabilities Net Minority Interest"]
-                equity = self.q_balance_sheet.loc[date, "Stockholders Equity"]
-                current_assets = self.q_balance_sheet.loc[date, "Current Assets"]
-                current_liabilities = self.q_balance_sheet.loc[date, "Current Liabilities"]
-                
+                revenue = self.get_safe_value(self.q_income_stmt, "Total Revenue", date, default=np.nan)
+                net_income = self.get_safe_value(self.q_income_stmt, "Net Income", date, default=np.nan)
+                gross_profit = self.get_safe_value(self.q_income_stmt, "Gross Profit", date, default=np.nan)
+                operating_income = self.get_safe_value(self.q_income_stmt, "Operating Income", date, default=np.nan)
+                total_assets = self.get_safe_value(self.q_balance_sheet, "Total Assets", date, default=np.nan)
+                total_liabilities = self.get_safe_value(self.q_balance_sheet, "Total Liabilities Net Minority Interest", date, default=np.nan)
+                equity = self.get_safe_value(self.q_balance_sheet, "Stockholders Equity", date, default=np.nan)
+                current_assets = self.get_safe_value(self.q_balance_sheet, "Current Assets", date, default=np.nan)
+                current_liabilities = self.get_safe_value(self.q_balance_sheet, "Current Liabilities", date, default=np.nan)
+                                
                 inventory = self.get_safe_value(self.q_balance_sheet, "Inventory", date, default=np.nan)
                 cash = self.get_safe_value(self.q_balance_sheet, "Cash And Cash Equivalents", date, default=np.nan)
                 receivables = self.get_safe_value(self.q_balance_sheet, "Accounts Receivable", date, default=np.nan)
@@ -82,13 +82,9 @@ class stock():
                 ebit = self.get_safe_value(self.q_income_stmt, "EBIT", date, default=np.nan)
                 if pd.isna(ebit):
                     ebit = self.get_safe_value(self.q_income_stmt, "Operating Income", date, default=np.nan)
-                lt_debt = self.get_safe_value(self.q_balance_sheet, "Long Term Debt", date, default=0)
-                st_debt = self.get_safe_value(self.q_balance_sheet, "Short Term Debt", date, default=0)
-                total_debt = lt_debt + st_debt
                 market_cap = self.info.get("marketCap")
-                ev = market_cap + total_debt - cash if pd.notnull(market_cap) else np.nan
+                
 
-                op_cashflow = self.q_cashflow_stmt.loc[date, "Operating Cash Flow"]
                 op_cashflow = self.get_safe_value(self.q_cashflow_stmt, "Operating Cash Flow", date, default=0)
                 capex = self.get_safe_value(self.q_cashflow_stmt, "Capital Expenditure", date, default=0)
                 free_cash_flow = op_cashflow - capex if pd.notnull(op_cashflow) else np.nan
@@ -153,24 +149,7 @@ class stock():
             except Exception as e:
                 self.errors.append(f"Could not calculate quarterly ratios for {self.ticker} on {date}. Reason: {e}")
 
-        if self.latest_quarter:
-            trailing_pe = self.info.get("trailingPE")
-            eps_growth = self.info.get("earningsGrowth")
-            self.peg_ratio = trailing_pe / (eps_growth * 100) if trailing_pe and eps_growth and eps_growth > 0 else "N/A"
-
-            current_price = self.info.get("currentPrice")
-            book_value = self.info.get("bookValue")
-            self.pb_ratio = current_price / book_value if current_price and book_value else "N/A"
-            
-            dividend_rate = self.info.get("dividendRate", np.nan)
-            shares = self.info.get("sharesOutstanding", np.nan)
-            self.ev_ebit = ev / ebit if ebit else np.nan
-            self.dividend_payout_ratio = ((dividend_rate * shares) / net_income) * 100 if dividend_rate and shares and net_income else np.nan
-            self.ev_fcf = ev / free_cash_flow if ev and free_cash_flow else np.nan
-            self.fcf_yield = (free_cash_flow / market_cap) * 100 if free_cash_flow and market_cap else np.nan
-
-
-
+        
         growth_cols = [ "Revenue", "Net Income", "Gross Profit", "Operating Income", "Operating Cash Flow", "Free Cash Flow", "EBIT" ]
 
         for col in growth_cols:
@@ -257,7 +236,6 @@ class stock():
             except Exception as e:
                 self.errors.append(f"Could not calculate yearly ratios for {self.ticker} on {date}. Reason: {e}")
 
-       
         growth_cols = [ "Revenue", "Net Income", "Gross Profit", "Operating Income", "Operating Cash Flow", "Free Cash Flow", "EBIT" ]
 
         for col in growth_cols:
@@ -265,8 +243,105 @@ class stock():
                 self.yfinancials[f"{col} YoY"] = self.yfinancials[col].pct_change(fill_method=None).round(4) * 100
 
         self.format_ratios(type='y')
-        self.yfinancials.dropna(inplace = True)
-        self.yratios.dropna(inplace=True)
+
+    def one_time_ratios(self):
+        if self.latest_quarter:
+            date = self.latest_quarter
+            cash = self.get_safe_value(self.q_balance_sheet, "Cash And Cash Equivalents", date, default=np.nan)
+            lt_debt = self.get_safe_value(self.q_balance_sheet, "Long Term Debt", date, default=0)
+            st_debt = self.get_safe_value(self.q_balance_sheet, "Short Term Debt", date, default=0)
+            total_debt = lt_debt + st_debt
+            market_cap = self.info.get("marketCap")
+            ev = market_cap + total_debt - cash if pd.notnull(market_cap) else np.nan
+            capex = self.get_safe_value(self.q_cashflow_stmt, "Capital Expenditure", date, default=0)
+            op_cashflow = self.get_safe_value(self.q_cashflow_stmt, "Operating Cash Flow", date, default=0)
+            ebit = self.get_safe_value(self.q_income_stmt, "EBIT", date, default=np.nan)
+            if pd.isna(ebit):
+                ebit = self.get_safe_value(self.q_income_stmt, "Operating Income", date, default=np.nan)
+            net_income = self.q_income_stmt.loc[date, "Net Income"]
+            free_cash_flow = op_cashflow - capex if pd.notnull(op_cashflow) else np.nan
+            market_cap = self.info.get("marketCap")
+            trailing_pe = self.info.get("trailingPE")
+            eps_growth = self.info.get("earningsGrowth")
+            self.peg_ratio = trailing_pe / (eps_growth * 100) if trailing_pe and eps_growth and eps_growth > 0 else "N/A"
+
+            current_price = self.info.get("currentPrice")
+            book_value = self.info.get("bookValue")
+            self.pb_ratio = current_price / book_value if current_price and book_value else "N/A"
+            
+            dividend_rate = self.info.get("dividendRate", np.nan)
+            shares = self.info.get("sharesOutstanding", np.nan)
+            self.ev_ebit = ev / ebit if ebit else np.nan
+            self.dividend_payout_ratio = ((dividend_rate * shares) / net_income) * 100 if dividend_rate and shares and net_income else np.nan
+            self.ev_fcf = ev / free_cash_flow if ev and free_cash_flow else np.nan
+            self.fcf_yield = (free_cash_flow / market_cap) * 100 if free_cash_flow and market_cap else np.nan
+
+    def piotroski_f_score_yearly(self):
+        piotroski_columns = [
+            "Net Income",
+            "ROA",
+            "Operating Cash Flow",
+            "Operating Cash Flow > Net Income",
+            "Lower Debt/Equity vs Last Year",
+            "Higher Current Ratio vs Last Year",
+            "No New Shares Issued",  # will be filled later
+            "Higher Gross Margin vs Last Year",
+            "Higher Asset Turnover vs Last Year"
+        ]
+
+        rows = []
+
+        def gv(col, year):
+            return self.yfinancials.loc[year, col] if col in self.yfinancials.columns else np.nan
+
+        def gr(col, year):
+            return self.yratios.loc[year, col] if col in self.yratios.columns else np.nan
+        
+        for i in range(1, len(self.y_dates)):
+            year = self.y_dates[i]
+            prev_year = self.y_dates[i-1]
+
+            row = {col: 0 for col in piotroski_columns}
+            row["Year"] = year.year
+
+            if gv("Net Income", year) > 0:
+                row["Net Income"] = 1
+
+            if gr("ROA", year) > 0:
+                row["ROA"] = 1
+
+            if gv("Operating Cash Flow", year) > 0:
+                row["Operating Cash Flow"] = 1
+
+            if gv("Operating Cash Flow", year) > gv("Net Income", year):
+                row["Operating Cash Flow > Net Income"] = 1
+
+            debt_curr = gr("Debt Ratio", year)
+            debt_prev = gr("Debt Ratio", prev_year)
+            if pd.notna(debt_curr) and pd.notna(debt_prev) and debt_curr < debt_prev:
+                row["Lower Debt/Equity vs Last Year"] = 1
+
+            curr_curr = gr("Current Ratio", year)
+            curr_prev = gr("Current Ratio", prev_year)
+            if pd.notna(curr_curr) and pd.notna(curr_prev) and curr_curr > curr_prev:
+                row["Higher Current Ratio vs Last Year"] = 1
+
+            gm_curr = gr("Gross Margin", year)
+            gm_prev = gr("Gross Margin", prev_year)
+            if pd.notna(gm_curr) and pd.notna(gm_prev) and gm_curr > gm_prev:
+                row["Higher Gross Margin vs Last Year"] = 1
+
+            at_curr = gr("Asset Turnover", year)
+            at_prev = gr("Asset Turnover", prev_year)
+            if pd.notna(at_curr) and pd.notna(at_prev) and at_curr > at_prev:
+                row["Higher Asset Turnover vs Last Year"] = 1
+
+            rows.append(row)
+
+        self.f_score_y = pd.DataFrame(rows)
+        self.f_score_y.set_index("Year", inplace=True)
+        self.f_score_y = self.f_score_y[piotroski_columns]
+        self.f_score_y['F Score'] = self.f_score_y.sum(axis = 1)
 
     def format_ratios(self, type):
         percent_columns = [

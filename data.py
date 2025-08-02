@@ -606,3 +606,236 @@ RATIO_EXPLANATIONS = {
         "guide": "- High = expansion or asset-heavy model.\n- >15% can strain cash flow."
     }
 }
+
+HISTORICAL_CHART = {
+    "formal":"The price at which the stock traded at.", 
+    "casual":"The price you would have for the stock at that day",
+    "guide":"Green Candle means Return was positie for that day. Red means it was negative. Dotted Blue Line indicates the day the report was published which is used in our calculations."
+}
+
+PIOTROSKI_METRICS = {
+    "Net Income": {
+        "formal": "**Net Income** is the company's total profit after all expenses and taxes.",
+        "casual": "What’s left after all the bills — pure profit.",
+        "latex": r"\text{Net Income} = \text{Revenue} - \text{Expenses} - \text{Taxes}",
+        "guide": "Positive net income suggests profitability. A key signal of financial health."
+    },
+    "ROA": {
+        "formal": "**Return on Assets (ROA)** measures how efficiently a company uses its assets to generate profit.",
+        "casual": "How much bang you're getting for every buck of stuff the company owns.",
+        "latex": r"\text{ROA} = \left( \frac{\text{Net Income}}{\text{Total Assets}} \right) \times 100",
+        "guide": "ROA > 0 is considered healthy in Piotroski scoring."
+    },
+    "Operating Cash Flow": {
+        "formal": "**Operating Cash Flow (OCF)** is the cash generated from a company’s core operations.",
+        "casual": "Actual cash the business makes from its day job — not accounting tricks.",
+        "latex": r"\text{OCF} = \text{Net Income} + \text{Non-cash Expenses} - \text{Changes in Working Capital}",
+        "guide": "A positive OCF means the company’s business operations are bringing in cash."
+    },
+    "Operating Cash Flow > Net Income": {
+        "formal": "This test checks if the company is generating more cash than accounting profit.",
+        "casual": "If cash is higher than profit, it’s a sign the profits aren’t just on paper.",
+        "latex": r"\text{Pass if: } \text{OCF} > \text{Net Income}",
+        "guide": "Suggests earnings are backed by real cash — not just accruals."
+    },
+    "Lower Debt/Equity vs Last Year": {
+        "formal": "This condition checks if the company's leverage (Debt/Equity) has decreased compared to the previous year.",
+        "casual": "Is the company less in debt this year? That’s a good sign.",
+        "latex": r"\text{D/E}_{t} < \text{D/E}_{t-1}",
+        "guide": "A decline means reduced financial risk or better debt management."
+    },
+    "Higher Current Ratio vs Last Year": {
+        "formal": "**Current Ratio** compares current assets to current liabilities. An increase suggests better short-term liquidity.",
+        "casual": "Can they pay their bills more comfortably now than last year?",
+        "latex": r"\text{Current Ratio} = \frac{\text{Current Assets}}{\text{Current Liabilities}}",
+        "guide": "Higher ratio year-over-year suggests improved liquidity."
+    },
+    "New Shares Issued": {
+        "formal": "This test checks whether the company issued new equity in the past year.",
+        "casual": "If they didn’t dilute your shares, that’s a win.",
+        "latex": r"\text{Fail if: } \text{Shares Outstanding}_{t} > \text{Shares Outstanding}_{t-1}",
+        "guide": "Issuing new shares may signal distress or overvaluation. No issuance earns a Piotroski point."
+    },
+    "Higher Gross Margin vs Last Year": {
+        "formal": "**Gross Margin** measures how much profit is retained from revenue after production costs.",
+        "casual": "How fat is the profit before paying for marketing, admin, etc.?",
+        "latex": r"\text{Gross Margin} = \left( \frac{\text{Gross Profit}}{\text{Revenue}} \right) \times 100",
+        "guide": "Improving margin suggests better cost control or pricing power."
+    },
+    "Higher Asset Turnover vs Last Year": {
+        "formal": "**Asset Turnover Ratio** measures how efficiently a company uses assets to generate sales.",
+        "casual": "How much revenue they squeeze from each dollar of stuff they own.",
+        "latex": r"\text{Asset Turnover} = \frac{\text{Revenue}}{\text{Total Assets}}",
+        "guide": "An increase means the company is using its assets more efficiently."
+    },
+}
+
+PIOTROSKI_EXPLANATION = {
+    "formal": "**Piotroski F-Score** is a 0–9 scoring system that evaluates a company's financial strength based on profitability, leverage, liquidity, and operating efficiency. Each of 9 signals earns 1 point if criteria are met.",
+    
+    "casual": "Think of this as a report card for a company's financial health. The score goes from 0 (bad) to 9 (awesome). It's based on 9 signals like whether profits are up, debt is going down, or cash flow is solid.",
+
+    "guide": """
+**Interpretation Guide:**
+- **8–9:** Strong fundamentals. Company passes nearly all quality checks.
+- **6–7:** Decent score. Generally financially stable.
+- **4–5:** Neutral zone. Investigate further.
+- **0–3:** Weak fundamentals. Possible red flags.
+
+**Scoring Criteria (1 point each):**
+- **Profitability:**
+  1. Net Income > 0\n
+  2. ROA > 0\n
+  3. Operating Cash Flow > 0\n
+  4. CFO > Net Income\n
+
+- **Leverage, Liquidity, and Funding:**
+  5. Decrease in long-term debt\n
+  6. Increase in current ratio\n
+  7. No new equity issued\n
+
+- **Operating Efficiency:**
+  8. Higher gross margin vs. previous year\n
+  9. Higher asset turnover vs. previous year\n
+
+---
+
+**⚠ Limitations in This Dashboard:**
+- Our implementation **only includes criteria for which data is available via Yahoo Finance**.
+- Metrics like **“New Equity Issued”** or **long-term debt comparisons** may be approximated or missing.
+- Therefore, the final score may **differ slightly** from professional platforms like Bloomberg or GuruFocus.
+"""
+}
+
+DUPONT_EXPLANATION = {
+    "formal": "**DuPont Analysis** breaks down Return on Equity (ROE) into three components: profitability, efficiency, and leverage. This helps identify what’s driving or hurting a company’s returns.",
+    
+    "casual": "It’s like breaking ROE into parts to see where the profit really comes from — are they good at making money, using assets, or just taking on debt?",
+
+    "latex": r"""
+\begin{aligned}
+\text{ROE} &= \text{Net Profit Margin} \times \text{Asset Turnover} \times \text{Equity Multiplier} \\[1em]
+\text{Net Profit Margin} &= \frac{\text{Net Income}}{\text{Revenue}} \\[1em]
+\text{Asset Turnover} &= \frac{\text{Revenue}}{\text{Total Assets}} \\[1em]
+\text{Equity Multiplier} &= \frac{\text{Total Assets}}{\text{Equity}}
+\end{aligned}
+""",
+
+    "guide": """
+**Interpretation Guide:**
+- **Net Profit Margin**: Measures profitability. Higher margin = more profit per dollar of sales.
+- **Asset Turnover**: Shows efficiency. Higher = better use of assets to generate revenue.
+- **Equity Multiplier**: Reflects leverage. High multiplier = more debt relative to equity.
+
+**Reading the Result:**
+- A high ROE from **strong margins and turnover** is a good sign.
+- A high ROE driven by **leverage** (high equity multiplier) could be risky.
+- Comparing components year-over-year can show if profitability is improving or just financial engineering.
+
+---
+
+**⚠ Limitations in This Dashboard:**
+- Our DuPont implementation **depends on available Yahoo Finance data**, which may lack:
+  - Consistent "Total Assets" or "Equity" values
+  - Granular details like "Interest Burden" (for 5-step DuPont)
+- We use the **3-step DuPont model** due to limited breakdowns.
+- Treat this as a simplified ROE breakdown, not a full forensic tool.
+"""
+}
+
+ABOUT_PAGE = """
+Welcome to this **Financial Dashboard**, an educational tool designed to analyze public companies using real financial data.  
+It offers both **insightful analysis** for investors and **guided explanations** for learners through **Dummy Mode**.
+
+---
+
+### 🔍 What This Project Does
+- Retrieves real-time **financial statements** from Yahoo Finance (Income, Balance Sheet, Cash Flow)
+- Computes over **30+ financial ratios and metrics**
+- Presents **historical stock prices** with quarterly and yearly overlays
+- Supports **interactive plotting** for visual trend analysis
+- Offers advanced insights through:
+    - 📊 **Piotroski F-Score**
+    - 🧮 **DuPont Analysis**
+    - 💡 **Valuation ratios** (PEG, EV/EBITDA, FCF Yield, P/B, etc.)
+
+---
+
+### 🧠 What is Dummy Mode?
+
+When enabled, it transforms every metric card into an **interactive explanation module**.
+
+Each metric comes with:
+- 📘 **Formal definition**  
+- 😄 **Casual description**  
+- 🧮 **LaTeX-based formula**  
+- 🔍 **Interpretation guide**
+
+> ✅ Use Dummy Mode to understand *what a metric means*, *how it's calculated*, and *why it matters*.
+
+**How to Enable:**
+- Go to the **Sidebar** → Enable ✅ `Dummy Mode`
+
+---
+
+### 🛠 Key Features Overview
+
+| Feature | Description |
+|--------|-------------|
+| 📈 **Metric Cards** | Key financial metrics with optional explanations |
+| 📉 **Interactive Charts** | Stock price plots with earnings highlights |
+| 🧠 **Dummy Mode** | Learn what every number means |
+| 📊 **Grouped Tables** | Financials and ratios grouped by type (profitability, liquidity, etc.) |
+| 📈 **Advanced Analysis** | Includes Piotroski F-Score and DuPont breakdown |
+| 🧾 **Quarterly & Yearly Modes** | View short-term vs long-term trends |
+
+---
+
+### ⚠ Approximations & Data Limitations
+
+This dashboard uses Yahoo Finance APIs, which means some limitations apply:
+
+- **Missing Fields**: Yahoo Finance does not always provide:
+    - Equity Issuance (used in Piotroski)
+    - Some CapEx breakdowns
+    - Interest Burden / Effective Tax Rate (for full DuPont)
+- **Simplified Models**: Where full decomposition isn't possible, simplified formulas are used
+
+📌 **These can cause differences** compared to platforms like Bloomberg, GuruFocus, or TIKR.
+
+---
+
+### 📢 Please Verify Before Using!
+
+Do **not** make investment decisions without verifying metrics using reliable sources like:
+
+- SEC EDGAR Filings
+- Yahoo Finance (manually)
+- Morningstar
+- TIKR or Koyfin
+
+The dashboard does not replace due diligence.
+
+---
+
+### 💾 Save Your Dashboard View (PDF Export)
+
+You can save your dashboard as a PDF report by printing the page.
+
+**To do this safely:**
+1. Press **`Ctrl + P`** or open browser’s **Print → Save as PDF**
+2. Before saving, ensure:
+    - ✅ "Background graphics" is **enabled**
+    - ✅ Zoom is set to **80%**
+    - ✅ Layout is **Landscape**
+    - ✅ Expand all desired explanation sections which you want in the final PDF
+
+> 🔐 This avoids content getting cut off or omitted
+
+---
+
+### 🙌 Thank You!
+
+This tool was built to **empower your financial analysis** and make learning metrics **easier and fun**.  
+If you enjoy it or want to contribute new ideas, feel free to fork or expand this project!
+    """
